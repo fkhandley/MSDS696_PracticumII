@@ -1,0 +1,33 @@
+WITH product AS(
+SELECT
+  DISTINCT ON ("ProductID") *
+FROM 
+  "export"."Product"
+ORDER BY
+  "ProductID", "UpdatedATUtc" DESC)
+  
+SELECT
+  s."InvoiceID" AS trans_id,
+  s."InvoiceDateTime" AS datetime,
+  p."ExternalBarCode"::text AS barcode,
+  p."ProductFullName" AS full_name,
+  p."ProductBrand" AS brand,
+  p."ProductCategory" AS category,
+  p."ProductSubCategory" AS subcategory,
+  p."SizeQty" AS size_grams,
+  (s."PromoDiscountAmount" / s."CurrentQty") AS unit_discount,
+  s."SubtotalLoyaltyAmount" AS loyalty_tendered,
+  SUBSTRING(store."StoreName" FROM POSITION('Dragon' IN store."StoreName") + 7) AS store,
+  store."Id" AS store_id,
+  s."CurrentQty" AS sales_qty,
+  p."Prices" AS price_json
+FROM "export"."Sale" AS s
+  LEFT JOIN product AS p ON s."ProductID" = p."ProductID"
+  LEFT JOIN "export"."Store" AS store ON s."StoreID" = store."StoreId" 
+WHERE
+  LEFT(store."StoreZipCode",1) = '8'
+  AND s."InvoiceDateTime" >= current_date - interval '365 days'
+  AND s."InvoiceDateTime" < current_date
+  AND p."ProductCategory" NOT IN ('Accessories','Apparel','Bags','Stickers')
+ORDER BY 
+  s."InvoiceDateTime"
